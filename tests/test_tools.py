@@ -1,18 +1,8 @@
-"""
-test_tools.py
---------------
-
-Unit tests for all tools defined in ``tools.py``: calculator,
-unit_converter, percentage_calculator, and date_calculator.
-"""
+"""Unit tests for all tools."""
 import math
-
 import pytest
+from math_word_problems.tools import calculator, unit_converter, percentage_calculator, date_calculator
 
-from tools import calculator, unit_converter, percentage_calculator, date_calculator
-
-
-# --- Calculator tests ---
 
 @pytest.mark.parametrize(
     "operation,a,b,expected",
@@ -28,13 +18,11 @@ from tools import calculator, unit_converter, percentage_calculator, date_calcul
     ],
 )
 def test_calculator_basic_operations(operation, a, b, expected):
-    """Test basic arithmetic operations of the calculator tool."""
     result = calculator(operation, a, b)
     assert math.isclose(result, expected, rel_tol=1e-9)
 
 
 def test_calculator_division_by_zero():
-    """Test that division by zero returns an error message rather than raising."""
     result = calculator("divide", 5, 0)
     assert isinstance(result, str)
     assert "zero" in result.lower()
@@ -45,8 +33,6 @@ def test_calculator_unsupported_op():
     assert isinstance(result, str)
     assert "unsupported" in result.lower()
 
-
-# --- Unit converter tests ---
 
 @pytest.mark.parametrize(
     "value,from_unit,to_unit,expected",
@@ -71,8 +57,6 @@ def test_unit_converter_unsupported():
     assert "unsupported" in result.lower()
 
 
-# --- Percentage calculator tests ---
-
 def test_percentage_of():
     assert math.isclose(percentage_calculator("of", 200, 15), 30.0)
 
@@ -95,8 +79,6 @@ def test_percentage_what_percent_zero():
     assert "zero" in result.lower()
 
 
-# --- Date calculator tests ---
-
 def test_date_add_days():
     assert date_calculator("add_days", "2025-01-01", days=10) == "2025-01-11"
 
@@ -106,12 +88,10 @@ def test_date_subtract_days():
 
 
 def test_date_days_between():
-    result = date_calculator("days_between", "2025-01-01", date2="2025-01-31")
-    assert result == "30"
+    assert date_calculator("days_between", "2025-01-01", date2="2025-01-31") == "30"
 
 
 def test_date_day_of_week():
-    # 2025-01-01 is a Wednesday
     assert date_calculator("day_of_week", "2025-01-01") == "Wednesday"
 
 

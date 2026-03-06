@@ -1,48 +1,18 @@
 """
-tools.py
------------
+math_word_problems.tools
+-------------------------
 
-This module defines the calculator tool used by the math word problem solver.
-The calculator provides four basic arithmetic operations: addition, subtraction,
-multiplication and division.  It is intentionally simple — no exponentiation,
-roots or advanced mathematics are supported.  Division by zero returns an
-error message rather than raising an exception.
-
-The functions in this module are decorated with a ``tool`` decorator if
-available from ``langgraph``.  When the ``langgraph`` package is not
-installed (as may be the case in a minimal test environment), a fallback
-decorator is defined that simply returns the original function untouched.
-
-Usage::
-
-    from tools import calculator
-    result = calculator("add", 2, 3)  # returns 5
-
+Calculator, unit converter, percentage calculator, and date calculator
+tools used by the math word problem solver.
 """
 from __future__ import annotations
 
 from typing import Callable, Any
 
 try:
-    # Attempt to import the tool decorator from langgraph.  In production
-    # environments this will annotate the function for use inside a LangGraph
-    # node.  If langgraph is not available (e.g. offline testing), we
-    # gracefully fall back to a no-op decorator.
     from langgraph import tool  # type: ignore
-except ImportError:  # pragma: no cover
+except ImportError:
     def tool(func: Callable[..., Any]) -> Callable[..., Any]:
-        """Fallback decorator used when ``langgraph`` is unavailable.
-
-        The fallback decorator simply returns the original function without
-        modification.  It preserves the wrapped function's signature and
-        docstring so that tooling and documentation remain intact.
-
-        Args:
-            func: The function being decorated.
-
-        Returns:
-            The original function.
-        """
         return func
 
 
@@ -50,35 +20,16 @@ except ImportError:  # pragma: no cover
 def calculator(operation: str, a: float, b: float) -> float | str:
     """Performs a basic arithmetic operation.
 
-    This tool implements four arithmetic operations: addition (``add``),
-    subtraction (``subtract``), multiplication (``multiply``) and division
-    (``divide``).  All other operations yield a string error message.  When
-    dividing by zero the function returns an error message rather than
-    raising an exception.
-
     Args:
-        operation: The operation to perform.  Must be one of ``"add"``,
-            ``"subtract"``, ``"multiply"`` or ``"divide"``.
+        operation: One of ``"add"``, ``"subtract"``, ``"multiply"``,
+            or ``"divide"``.
         a: The first operand.
         b: The second operand.
 
     Returns:
-        The numerical result of the operation, or an error message string
-        if the operation is unsupported or division by zero occurs.
-
-    Examples:
-
-        >>> calculator("add", 1, 2)
-        3
-        >>> calculator("divide", 4, 2)
-        2.0
-        >>> calculator("divide", 4, 0)
-        'Error: Division by zero'
+        The numerical result, or an error message string.
     """
     op = operation.lower().strip()
-    # Ensure the operands are floats for consistency.  The tool still accepts
-    # integers, but converting to float avoids accidental integer division in
-    # Python 2 semantics (even though Python 3 is used here).
     try:
         a_float = float(a)
         b_float = float(b)
@@ -140,8 +91,7 @@ def unit_converter(value: float, from_unit: str, to_unit: str) -> float | str:
         to_unit: The target unit.
 
     Returns:
-        The converted value, or an error message if the conversion is
-        unsupported.
+        The converted value, or an error message.
     """
     try:
         v = float(value)
@@ -151,7 +101,6 @@ def unit_converter(value: float, from_unit: str, to_unit: str) -> float | str:
     fu = from_unit.lower().strip()
     tu = to_unit.lower().strip()
 
-    # Temperature conversions are special-cased
     if fu in ("fahrenheit", "f") and tu in ("celsius", "c"):
         return (v - 32) * 5 / 9
     if fu in ("celsius", "c") and tu in ("fahrenheit", "f"):
@@ -169,14 +118,12 @@ def percentage_calculator(operation: str, base: float, percent: float) -> float 
     """Performs percentage operations.
 
     Args:
-        operation: One of ``"of"`` (what is X% of Y), ``"change"``
-            (Y changed by X%), or ``"what_percent"`` (X is what % of Y).
+        operation: One of ``"of"``, ``"change"``, or ``"what_percent"``.
         base: The base number.
         percent: The percentage value.
 
     Returns:
-        The numeric result, or an error message if the operation is
-        unsupported.
+        The numeric result, or an error message.
     """
     try:
         b = float(base)
@@ -187,13 +134,10 @@ def percentage_calculator(operation: str, base: float, percent: float) -> float 
     op = operation.lower().strip()
 
     if op == "of":
-        # What is percent% of base?
         return b * (p / 100)
     if op == "change":
-        # base changed by percent%
         return b * (1 + p / 100)
     if op == "what_percent":
-        # base is what percent of percent (percent acts as the whole)
         if p == 0:
             return "Error: Division by zero"
         return (b / p) * 100

@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[project]
+name = "math-word-problems"
+version = "1.0.0"
+description = "The canonical hello world for single-agent LLM systems"
+requires-python = ">=3.11"
+license = "MIT"
+dependencies = [
+    "langgraph>=0.2.0",
+    "langchain-anthropic>=0.3.0",
+    "langchain-core>=0.3.0",
+    "anthropic>=0.40.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0"]
+
+[project.scripts]
+math-word-problems = "math_word_problems.__main__:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

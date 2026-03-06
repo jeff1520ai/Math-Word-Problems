@@ -1,28 +1,17 @@
 """
-agent.py
---------
+math_word_problems.agent
+-------------------------
 
 LLM-powered math word problem solver using LangGraph and Claude.
-
-This module implements the actual agent that reasons about word problems,
-selects and calls tools, and chains operations together in a
-think-act-observe loop.  It replaces the pre-defined operation plans in
-solver.py with genuine LLM reasoning.
-
-The agent supports three phases:
-  Phase 1 — single tool (calculator), clear problems
-  Phase 2 — multiple tools, agent decides which to use
-  Phase 3 — incomplete information, agent must recognise unsolvable problems
 """
 from __future__ import annotations
 
 import math
-import os
-from typing import Any, Dict, List, Literal, Sequence, TypedDict
+import re
+from typing import Any, Dict, List, Literal, TypedDict
 
 from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import (
-    AIMessage,
     BaseMessage,
     HumanMessage,
     SystemMessage,
@@ -30,7 +19,7 @@ from langchain_core.messages import (
 )
 from langgraph.graph import END, StateGraph
 
-from tools import (
+from .tools import (
     calculator,
     date_calculator,
     percentage_calculator,
@@ -43,9 +32,8 @@ from tools import (
 
 PHASE1_TOOLS = [calculator]
 PHASE2_TOOLS = [calculator, unit_converter, percentage_calculator, date_calculator]
-PHASE3_TOOLS = PHASE2_TOOLS  # same tools, different system prompt
+PHASE3_TOOLS = PHASE2_TOOLS
 
-# Build a lookup by function name
 _TOOL_FNS = {
     "calculator": calculator,
     "unit_converter": unit_converter,
@@ -55,11 +43,10 @@ _TOOL_FNS = {
 
 
 # ---------------------------------------------------------------------------
-# LangChain tool schemas (for binding to the model)
+# LangChain tool schemas
 # ---------------------------------------------------------------------------
 
 def _lc_tool_schemas(tools: list) -> list:
-    """Build LangChain-compatible tool schemas from our tool functions."""
     schemas = []
     for fn in tools:
         if fn is calculator:
@@ -217,20 +204,16 @@ _MAX_ITERATIONS = 15
 
 
 def _make_agent_node(model: ChatAnthropic, tool_schemas: list):
-    """Create the agent node that calls the LLM."""
-
     def agent_node(state: AgentState) -> dict:
         messages = state["messages"]
         response = model.invoke(messages)
 
-        # Track token usage from response metadata
         usage = getattr(response, "usage_metadata", None) or {}
         tokens_in = usage.get("input_tokens", 0)
         tokens_out = usage.get("output_tokens", 0)
 
         new_steps = list(state.get("steps", []))
 
-        # Record think step from the text content
         if response.content:
             text_parts = []
             if isinstance(response.content, str):
@@ -245,28 +228,19 @@ def _make_agent_node(model: ChatAnthropic, tool_schemas: list):
                 think_text = " ".join(text_parts).strip()
                 if think_text:
                     new_steps.append({
-                        "type": "think",
-                        "content": think_text,
-                        "tool": None,
-                        "args": None,
-                        "result": None,
+                        "type": "think", "content": think_text,
+                        "tool": None, "args": None, "result": None,
                     })
 
-        # Record act steps from tool calls
         tool_calls = getattr(response, "tool_calls", []) or []
         for tc in tool_calls:
             new_steps.append({
-                "type": "act",
-                "content": f"{tc['name']}({tc['args']})",
-                "tool": tc["name"],
-                "args": tc["args"],
-                "result": None,
+                "type": "act", "content": f"{tc['name']}({tc['args']})",
+                "tool": tc["name"], "args": tc["args"], "result": None,
             })
 
-        new_messages = list(messages) + [response]
-
         return {
-            "messages": new_messages,
+            "messages": list(messages) + [response],
             "steps": new_steps,
             "tokens_in": state.get("tokens_in", 0) + tokens_in,
             "tokens_out": state.get("tokens_out", 0) + tokens_out,
@@ -278,7 +252,6 @@ def _make_agent_node(model: ChatAnthropic, tool_schemas: list):
 
 
 def tool_node(state: AgentState) -> dict:
-    """Execute tool calls from the last AI message."""
     messages = state["messages"]
     last_msg = messages[-1]
     tool_calls = getattr(last_msg, "tool_calls", []) or []
@@ -300,15 +273,10 @@ def tool_node(state: AgentState) -> dict:
                 result = f"Error: {e}"
 
         new_steps.append({
-            "type": "observe",
-            "content": str(result),
-            "tool": fn_name,
-            "args": fn_args,
-            "result": result,
+            "type": "observe", "content": str(result),
+            "tool": fn_name, "args": fn_args, "result": result,
         })
-        new_messages.append(
-            ToolMessage(content=str(result), tool_call_id=tc["id"])
-        )
+        new_messages.append(ToolMessage(content=str(result), tool_call_id=tc["id"]))
         tc_count += 1
 
     return {
@@ -322,11 +290,8 @@ def tool_node(state: AgentState) -> dict:
 
 
 def _should_continue(state: AgentState) -> Literal["tool_node", "end"]:
-    """Decide whether to call tools or finish."""
-    messages = state["messages"]
-    last_msg = messages[-1]
+    last_msg = state["messages"][-1]
     tool_calls = getattr(last_msg, "tool_calls", []) or []
-
     if tool_calls and state.get("tool_calls_count", 0) < _MAX_ITERATIONS:
         return "tool_node"
     return "end"
@@ -337,48 +302,25 @@ def _should_continue(state: AgentState) -> Literal["tool_node", "end"]:
 # ---------------------------------------------------------------------------
 
 def build_graph(phase: int = 1, model_name: str = "claude-haiku-4-5-20251001"):
-    """Build and compile the LangGraph agent.
-
-    Args:
-        phase: Which phase (1, 2, or 3) determines available tools and
-            system prompt.
-        model_name: The Claude model to use.
-
-    Returns:
-        A compiled LangGraph that can be invoked with an AgentState.
-    """
     if phase == 1:
-        tools = PHASE1_TOOLS
-        system_prompt = PHASE1_SYSTEM
+        tools, system_prompt = PHASE1_TOOLS, PHASE1_SYSTEM
     elif phase == 2:
-        tools = PHASE2_TOOLS
-        system_prompt = PHASE2_SYSTEM
+        tools, system_prompt = PHASE2_TOOLS, PHASE2_SYSTEM
     else:
-        tools = PHASE3_TOOLS
-        system_prompt = PHASE3_SYSTEM
+        tools, system_prompt = PHASE3_TOOLS, PHASE3_SYSTEM
 
     tool_schemas = _lc_tool_schemas(tools)
-
-    model = ChatAnthropic(
-        model=model_name,
-        max_tokens=1024,
-        temperature=0,
-    )
-    # Bind tools to the model
+    model = ChatAnthropic(model=model_name, max_tokens=1024, temperature=0)
     model = model.bind_tools(tool_schemas)
 
-    agent_node = _make_agent_node(model, tool_schemas)
-
     graph = StateGraph(AgentState)
-    graph.add_node("agent", agent_node)
+    graph.add_node("agent", _make_agent_node(model, tool_schemas))
     graph.add_node("tool_node", tool_node)
     graph.set_entry_point("agent")
     graph.add_conditional_edges("agent", _should_continue, {
-        "tool_node": "tool_node",
-        "end": END,
+        "tool_node": "tool_node", "end": END,
     })
     graph.add_edge("tool_node", "agent")
-
     return graph.compile()
 
 
@@ -387,12 +329,6 @@ def build_graph(phase: int = 1, model_name: str = "claude-haiku-4-5-20251001"):
 # ---------------------------------------------------------------------------
 
 def _extract_final_answer(steps: List[Dict[str, Any]]) -> tuple[float | None, str | None, str]:
-    """Extract the final answer from the agent's reasoning steps.
-
-    Returns:
-        (numeric_answer, text_answer, status)
-    """
-    # Look through think steps for FINAL ANSWER or UNSOLVABLE
     for step in reversed(steps):
         if step["type"] != "think":
             continue
@@ -402,29 +338,20 @@ def _extract_final_answer(steps: List[Dict[str, Any]]) -> tuple[float | None, st
             return None, reason, "unsolvable"
         if "FINAL ANSWER:" in content:
             answer_str = content.split("FINAL ANSWER:", 1)[1].strip()
-            import re
             cleaned = answer_str.replace("*", "").replace(",", "")
-            # Strip unicode fraction characters that can corrupt number
-            # parsing (e.g. "2⅔" would match as just "2").
             cleaned = re.sub(r"[\u2150-\u215E\u00BC-\u00BE]", " ", cleaned)
-            # Take the first line / sentence only, but keep parenthetical
-            # alternatives like "(or 2.67)".
             first_line = cleaned.split("\n")[0]
             for sep in ["(Note", "(note", "Here's"]:
                 first_line = first_line.split(sep)[0]
             all_matches = re.findall(r"-?\d+\.\d+|-?\d+", first_line)
             if all_matches:
-                # If there's a decimal match anywhere on the line, prefer
-                # it over a bare integer (handles "2⅔ (or 2.67)" cases).
                 decimals = [m for m in all_matches if "." in m]
                 val = float(decimals[0] if decimals else all_matches[0])
                 return val, answer_str, "solved"
-            # Fallback: search the full cleaned text
             all_matches = re.findall(r"-?\d+\.\d+|-?\d+", cleaned)
             if all_matches:
                 val = float(all_matches[0])
                 return val, answer_str, "solved"
-            # Also check for date answers (YYYY-MM-DD)
             date_match = re.search(r"\d{4}-\d{2}-\d{2}", answer_str)
             if date_match:
                 return None, date_match.group(), "solved"
@@ -433,23 +360,10 @@ def _extract_final_answer(steps: List[Dict[str, Any]]) -> tuple[float | None, st
 
 
 def solve_with_agent(
-    problem_text: str,
-    phase: int = 1,
-    model_name: str = "claude-haiku-4-5-20251001",
-    verbose: bool = False,
+    problem_text: str, phase: int = 1,
+    model_name: str = "claude-haiku-4-5-20251001", verbose: bool = False,
 ) -> Dict[str, Any]:
-    """Solve a math word problem using the LLM agent.
-
-    Args:
-        problem_text: The word problem to solve.
-        phase: Which phase (1, 2, or 3).
-        model_name: The Claude model to use.
-        verbose: If True, print step-by-step reasoning.
-
-    Returns:
-        A state dictionary with the full reasoning trace.
-    """
-    from problems import PROBLEM_BY_TEXT
+    from .problems import PROBLEM_BY_TEXT
 
     graph = build_graph(phase=phase, model_name=model_name)
 
@@ -473,27 +387,23 @@ def solve_with_agent(
     }
 
     final_state = graph.invoke(initial_state)
-
     steps = final_state.get("steps", [])
     numeric_answer, text_answer, status = _extract_final_answer(steps)
 
-    # Look up expected answer
     expected = None
     if problem_text in PROBLEM_BY_TEXT:
         expected = PROBLEM_BY_TEXT[problem_text].expected_answer
 
-    # Validate against expected answer
     if status == "solved" and expected is not None and numeric_answer is not None:
         if not math.isnan(expected):
             if abs(numeric_answer - expected) > max(0.01, abs(expected) * 0.01):
                 status = "wrong"
     elif status == "unsolvable" and expected is not None:
         if not math.isnan(expected):
-            status = "wrong"  # incorrectly said unsolvable
+            status = "wrong"
     elif status == "solved" and expected is not None and math.isnan(expected):
-        status = "wrong"  # should have been unsolvable
+        status = "wrong"
 
-    # Check correct rejection of unsolvable
     if status == "unsolvable" and expected is not None and math.isnan(expected):
         status = "correctly_rejected"
 
@@ -507,7 +417,7 @@ def solve_with_agent(
         "tool_calls": final_state.get("tool_calls_count", 0),
         "tokens_in": final_state.get("tokens_in", 0),
         "tokens_out": final_state.get("tokens_out", 0),
-        "cost": 0.0,  # could be computed from token counts
+        "cost": 0.0,
     }
 
     if verbose:

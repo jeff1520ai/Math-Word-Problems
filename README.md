@@ -29,24 +29,24 @@ pip install -r requirements.txt
 export ANTHROPIC_API_KEY=your-key-here
 
 # Solve a problem with the LLM agent
-python solver.py --llm "I have 3 baskets with 12 apples each. I eat 7. How many are left?"
+python -m math_word_problems --llm "I have 3 baskets with 12 apples each. I eat 7. How many are left?"
 
 # Solve with step-by-step trace
-python solver.py --llm --verbose "I have 3 baskets with 12 apples each. I eat 7. How many are left?"
+python -m math_word_problems --llm --verbose "I have 3 baskets with 12 apples each. I eat 7. How many are left?"
 
 # Use Phase 2 tools (unit converter, percentage calculator, date calculator)
-python solver.py --llm --phase 2 "A recipe calls for 2.5 cups of flour for 4 servings. How many grams for 8 servings?"
+python -m math_word_problems --llm --phase 2 "A recipe calls for 2.5 cups of flour for 4 servings. How many grams for 8 servings?"
 
 # Use Phase 3 (detects unsolvable problems)
-python solver.py --llm --phase 3 "A car drives from A to B in 3 hours. How fast was it going?"
+python -m math_word_problems --llm --phase 3 "A car drives from A to B in 3 hours. How fast was it going?"
 
 # Run the predefined solver (no API key needed)
-python solver.py --benchmark
+python -m math_word_problems --benchmark
 
 # Run LLM benchmarks
-python benchmarks.py --llm --phase 1
-python benchmarks.py --llm --phase 2
-python benchmarks.py --llm --phase 3
+python -m math_word_problems --llm --benchmark --phase 1
+python -m math_word_problems --llm --benchmark --phase 2
+python -m math_word_problems --llm --benchmark --phase 3
 ```
 
 ---
@@ -296,20 +296,26 @@ The agent gets the same answers but is 168,000x slower and costs money. The poin
 ## Project Structure
 
 ```
-agent.py               LLM-powered solver: LangGraph state machine, Claude tool loop
-solver.py              Predefined solver, CLI entry point, benchmark runners
-tools.py               Calculator, unit converter, percentage, date tools
-problems.py            110 problems across 3 phases and 8 tiers
-benchmarks.py          Benchmark CLI for predefined and LLM modes
-test_tools.py          Unit tests for all four tools
-test_solver.py         Unit tests for solver and problem set structure
-requirements.txt       Python dependencies
+math_word_problems/        Python package
+  __init__.py              Package exports
+  __main__.py              CLI entry point (python -m math_word_problems)
+  agent.py                 LLM-powered solver: LangGraph state machine, Claude tool loop
+  benchmarks.py            Benchmark runners for predefined and LLM modes
+  operations.py            Predefined operation plans for Phase 1 problems
+  problems.py              110 problems across 3 phases and 8 tiers
+  solver.py                Predefined solver and mock mode
+  tools.py                 Calculator, unit converter, percentage, date tools
+tests/
+  test_tools.py            Unit tests for all four tools
+  test_solver.py           Unit tests for solver and problem set structure
+pyproject.toml             Python packaging and pytest config
+requirements.txt           Python dependencies
 ```
 
 ### CLI Reference
 
 ```
-solver.py [problem]       Solve a single problem (predefined plans)
+python -m math_word_problems [problem]
   --llm                   Use the LLM-powered agent (requires ANTHROPIC_API_KEY)
   --phase {1,2,3}         Tool set and system prompt to use (default: 1)
   --model MODEL           Claude model name (default: claude-haiku-4-5-20251001)
@@ -318,13 +324,6 @@ solver.py [problem]       Solve a single problem (predefined plans)
   --benchmark             Run predefined Phase 1 benchmark
   --tier {1,2,3,4,5}      Run a specific tier only
   --meta                  Compare agent vs. Python baseline
-
-benchmarks.py             Run benchmarks
-  --llm                   Use LLM agent
-  --phase {1,2,3}         Phase to benchmark (with --llm)
-  --model MODEL           Claude model (with --llm)
-  --mock                  Use mock solver
-  --meta                  Agent vs. Python comparison
 ```
 
 ---
@@ -332,7 +331,7 @@ benchmarks.py             Run benchmarks
 ## Running Tests
 
 ```bash
-python -m pytest test_tools.py test_solver.py -v
+python -m pytest tests/ -v
 ```
 
 40 tests covering all four tools, the predefined solver, mock mode, and problem set structure. No API key required.
