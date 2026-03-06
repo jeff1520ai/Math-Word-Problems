@@ -30,7 +30,10 @@ import sys
 import time
 from typing import Any, Dict, List, Tuple, Union
 
-from problems import PROBLEMS, PROBLEM_BY_TEXT, Problem
+from problems import (
+    PROBLEMS, PROBLEM_BY_TEXT, PHASE1_PROBLEMS, PHASE2_PROBLEMS,
+    PHASE3_PROBLEMS, PHASE3_SOLVABLE, PHASE3_UNSOLVABLE, Problem,
+)
 from tools import calculator
 
 Number = Union[int, float]
@@ -288,7 +291,7 @@ PROBLEM_OPERATIONS: Dict[str, List[Dict[str, Any]]] = {
         {"op": "add", "a": ("result", 1), "b": ("result", 2)},  # add interest to balance
         {"op": "subtract", "a": "prev", "b": 50},  # pay fee
     ],
-    "A car travels 50 miles per hour for 2 hours, then 60 miles per hour for 1 hour, takes a 0.5-hour break (no travel), then travels 55 miles per hour for 1.5 hours. What is the total distance traveled?": [
+    "A car travels 50 miles per hour for 2 hours, then 60 miles per hour for 1 hour, takes a 0.5\u2011hour break (no travel), then travels 55 miles per hour for 1.5 hours. What is the total distance traveled?": [
         {"op": "multiply", "a": 50, "b": 2},
         {"op": "multiply", "a": 60, "b": 1},
         {"op": "add", "a": ("result", 0), "b": ("result", 1)},
@@ -296,12 +299,12 @@ PROBLEM_OPERATIONS: Dict[str, List[Dict[str, Any]]] = {
         {"op": "add", "a": ("result", 2), "b": ("result", 3)},
     ],
     "A 1000‑liter tank is empty. Water flows in at 50 liters/min for 10 minutes, out at 30 liters/min for 5 minutes, then in at 40 liters/min for 5 minutes. Afterwards, half of the water is pumped out. How much water remains?": [
-        {"op": "multiply", "a": 50, "b": 10},      # inflow 1
-        {"op": "multiply", "a": 30, "b": 5},       # outflow 1
-        {"op": "subtract", "a": ("result", 0), "b": ("result", 1)},
-        {"op": "multiply", "a": 40, "b": 5},       # inflow 2
-        {"op": "add", "a": "prev", "b": ("result", 3)},
-        {"op": "divide", "a": "prev", "b": 2},
+        {"op": "multiply", "a": 50, "b": 10},      # inflow 1 -> 500
+        {"op": "multiply", "a": 30, "b": 5},       # outflow 1 -> 150
+        {"op": "subtract", "a": ("result", 0), "b": ("result", 1)},  # 350
+        {"op": "multiply", "a": 40, "b": 5},       # inflow 2 -> 200
+        {"op": "add", "a": ("result", 2), "b": ("result", 3)},  # 350 + 200 = 550
+        {"op": "divide", "a": "prev", "b": 2},  # 275
     ],
     "A construction project requires 1000 bricks. Workers lay 200 bricks per day for 3 days, then 150 bricks per day for 2 days, and then remove 50 damaged bricks. How many bricks remain to be laid?": [
         {"op": "multiply", "a": 200, "b": 3},
@@ -310,7 +313,7 @@ PROBLEM_OPERATIONS: Dict[str, List[Dict[str, Any]]] = {
         {"op": "subtract", "a": "prev", "b": 50},
         {"op": "subtract", "a": 1000, "b": "prev"},
     ],
-    "A travel itinerary includes a flight of 3.5 hours, a train ride of 2.75 hours, a layover of 1.25 hours, a car drive of 4.5 hours, and a boat ride of 1 hour. There is a 30-minute break during the car drive. What is the total travel time?": [
+    "A travel itinerary includes a flight of 3.5 hours, a train ride of 2.75 hours, a layover of 1.25 hours, a car drive of 4.5 hours, and a boat ride of 1 hour. There is a 30\u2011minute break during the car drive. What is the total travel time?": [
         {"op": "add", "a": 3.5, "b": 2.75},
         {"op": "add", "a": "prev", "b": 1.25},
         {"op": "add", "a": "prev", "b": 4.5},
@@ -473,6 +476,23 @@ def solve_problem(problem_text: str, verbose: bool = False, mock: bool = False) 
     return state
 
 
+def solve_problem_llm(
+    problem_text: str,
+    phase: int = 1,
+    verbose: bool = False,
+    model_name: str = "claude-haiku-4-5-20251001",
+) -> Dict[str, Any]:
+    """Solve a problem using the LLM-powered agent.
+
+    This is a thin wrapper around ``agent.solve_with_agent`` that provides
+    the same return-value shape as ``solve_problem``.
+    """
+    from agent import solve_with_agent
+    return solve_with_agent(
+        problem_text, phase=phase, model_name=model_name, verbose=verbose,
+    )
+
+
 def run_benchmark(tier: int | None = None, mock: bool = False) -> None:
     """Run the benchmark suite and print aggregated statistics.
 
@@ -486,9 +506,9 @@ def run_benchmark(tier: int | None = None, mock: bool = False) -> None:
     calculator calls, average token counts (always zero in this implementation),
     and cost (zero).  Results are printed in a tabular format.
     """
-    # Group problems by tier
+    # Group problems by tier (Phase 1 only for predefined solver)
     problems_by_tier: Dict[int, List[Problem]] = {}
-    for prob in PROBLEMS:
+    for prob in PHASE1_PROBLEMS:
         problems_by_tier.setdefault(prob.tier, []).append(prob)
 
     tiers_to_run = [tier] if tier is not None else sorted(problems_by_tier.keys())
@@ -573,10 +593,10 @@ def run_meta_benchmark(mock: bool = False) -> None:
         mock: Whether to run the agent in mock mode.
     """
     print("=== Meta-Benchmark: Agent vs. Python ===\n")
-    # Agent performance
+    # Agent performance (Phase 1 problems only)
     start_agent = time.time()
     agent_correct = 0
-    for prob in PROBLEMS:
+    for prob in PHASE1_PROBLEMS:
         state = solve_problem(prob.problem, verbose=False, mock=mock)
         if state["status"] == "solved":
             agent_correct += 1
@@ -584,14 +604,14 @@ def run_meta_benchmark(mock: bool = False) -> None:
     # Baseline performance
     start_py = time.time()
     baseline_correct = 0
-    for prob in PROBLEMS:
+    for prob in PHASE1_PROBLEMS:
         # Baseline always knows the expected answer exactly
         baseline_correct += 1  # all are correct
     baseline_time = time.time() - start_py
     # Print table
     print("| Method          | Accuracy | Total Time | Total Cost | Errors        |")
     print("|-----------------|----------|------------|------------|---------------|")
-    total_problems = len(PROBLEMS)
+    total_problems = len(PHASE1_PROBLEMS)
     agent_accuracy = f"{agent_correct}/{total_problems}"
     baseline_accuracy = f"{baseline_correct}/{total_problems}"
     agent_errors = "" if agent_correct == total_problems else "Some"
@@ -617,6 +637,9 @@ def main(argv: List[str] | None = None) -> int:
     parser.add_argument("--tier", type=int, choices=[1, 2, 3, 4, 5], help="Run a specific tier during benchmarking")
     parser.add_argument("--meta", action="store_true", help="Run the meta-benchmark comparing agent vs. Python")
     parser.add_argument("--mock", action="store_true", help="Use mock mode (naive solver)")
+    parser.add_argument("--llm", action="store_true", help="Use the LLM-powered agent (requires ANTHROPIC_API_KEY)")
+    parser.add_argument("--phase", type=int, choices=[1, 2, 3], default=1, help="Which phase of tools/problems to use")
+    parser.add_argument("--model", type=str, default="claude-haiku-4-5-20251001", help="Claude model to use with --llm")
     args = parser.parse_args(argv)
 
     if args.benchmark or args.tier:
@@ -629,7 +652,13 @@ def main(argv: List[str] | None = None) -> int:
         return 0
     if args.problem:
         # Solve single problem
-        state = solve_problem(args.problem, verbose=args.verbose, mock=args.mock)
+        if args.llm:
+            state = solve_problem_llm(
+                args.problem, phase=args.phase, verbose=args.verbose,
+                model_name=args.model,
+            )
+        else:
+            state = solve_problem(args.problem, verbose=args.verbose, mock=args.mock)
         # Print verbose output
         if args.verbose:
             print(f"Problem: {state['problem']}\n")

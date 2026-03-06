@@ -1,6 +1,6 @@
 """
-tests/test_solver.py
----------------------
+test_solver.py
+---------------
 
 Unit tests for the problem solver defined in ``solver.py``.  These tests
 exercise normal and mock modes, verify that known problems are solved
@@ -11,7 +11,8 @@ import math
 
 import pytest
 
-from solver import solve_problem, PROBLEM_OPERATIONS, PROBLEM_BY_TEXT
+from solver import solve_problem, PROBLEM_OPERATIONS
+from problems import PROBLEM_BY_TEXT, PHASE1_PROBLEMS, PHASE2_PROBLEMS, PHASE3_UNSOLVABLE
 
 
 @pytest.mark.parametrize(
@@ -30,7 +31,6 @@ def test_solve_problem_known(problem_text: str, expected_answer: float) -> None:
     assert state["status"] == "solved", f"Solver did not solve problem: {problem_text}"
     assert state["answer_numeric"] is not None
     assert math.isclose(state["answer_numeric"], expected_answer, rel_tol=1e-2)
-    # Check that the number of tool calls matches the predefined operations length
     if problem_text in PROBLEM_OPERATIONS:
         assert state["tool_calls"] == len(PROBLEM_OPERATIONS[problem_text])
 
@@ -49,5 +49,30 @@ def test_mock_mode_addition() -> None:
     state = solve_problem(problem_text, mock=True)
     assert state["status"] == "solved"
     assert state["answer_numeric"] == 5.0
-    # In mock mode, there should be exactly one calculator call
     assert state["tool_calls"] == 1
+
+
+# --- Phase/problem set structure tests ---
+
+def test_phase1_has_50_problems():
+    assert len(PHASE1_PROBLEMS) == 50
+
+
+def test_phase2_has_30_problems():
+    assert len(PHASE2_PROBLEMS) == 30
+
+
+def test_phase3_has_30_problems():
+    from problems import PHASE3_PROBLEMS
+    assert len(PHASE3_PROBLEMS) == 30
+
+
+def test_phase3_unsolvable_has_nan_answers():
+    for prob in PHASE3_UNSOLVABLE:
+        assert math.isnan(prob.expected_answer), f"Unsolvable problem should have NaN answer: {prob.problem[:50]}"
+
+
+def test_all_phase1_problems_have_operations():
+    """Every Phase 1 problem should have a predefined operation plan."""
+    for prob in PHASE1_PROBLEMS:
+        assert prob.problem in PROBLEM_OPERATIONS, f"Missing operation plan: {prob.problem[:50]}"

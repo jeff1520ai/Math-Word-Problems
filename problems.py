@@ -384,10 +384,348 @@ _TIER5: List[Problem] = [
 ]
 
 
+# Phase 1 problems (all tiers)
+PHASE1_PROBLEMS: List[Problem] = _TIER1 + _TIER2 + _TIER3 + _TIER4 + _TIER5
+
+
+# ---------------------------------------------------------------------------
+# Phase 2 — Multiple Tools, Ambiguous Problems (30 problems)
+# These problems require 2-3 different tools and the agent must decide which
+# tool to use.  Tools: calculator, unit_converter, percentage_calculator,
+# date_calculator.
+# ---------------------------------------------------------------------------
+
+PHASE2_PROBLEMS: List[Problem] = [
+    # calculator + percentage_calculator
+    Problem(
+        problem="A shirt costs $80 and is 25% off. What is the sale price?",
+        expected_answer=80 * (1 - 0.25),
+        tier=6,
+    ),
+    Problem(
+        problem="A laptop costs $1200. There's a 10% discount, then you pay 8% sales tax on the discounted price. What do you pay?",
+        expected_answer=1200 * 0.90 * 1.08,
+        tier=6,
+    ),
+    Problem(
+        problem="You earn $3000 per month. You save 15% of your salary. After 4 months, how much have you saved?",
+        expected_answer=3000 * 0.15 * 4,
+        tier=6,
+    ),
+    Problem(
+        problem="A restaurant bill is $85. You want to leave a 20% tip. What is the total amount you pay?",
+        expected_answer=85 * 1.20,
+        tier=6,
+    ),
+    Problem(
+        problem="A store marks up products by 40%. If a product costs $50 to make, what is the selling price?",
+        expected_answer=50 * 1.40,
+        tier=6,
+    ),
+    # calculator + unit_converter
+    Problem(
+        problem="A recipe calls for 2.5 cups of flour for 4 servings. You're making 8 servings. How many grams of flour do you need?",
+        expected_answer=(2.5 * (8 / 4)) * 120.0,
+        tier=6,
+    ),
+    Problem(
+        problem="You drive 120 miles. Your friend drives 150 km. Who drove farther, and by how many miles?",
+        expected_answer=120 - 150 / 1.60934,
+        tier=6,
+    ),
+    Problem(
+        problem="A package weighs 5 lbs. You need to ship 3 of them. What is the total weight in kilograms?",
+        expected_answer=5 * 3 * 0.453592,
+        tier=6,
+    ),
+    Problem(
+        problem="A room is 15 feet long and 12 feet wide. What is the area in square feet?",
+        expected_answer=15 * 12,
+        tier=6,
+    ),
+    Problem(
+        problem="You run a 10 km race in 50 minutes. What was your pace in minutes per mile?",
+        expected_answer=50 / (10 / 1.60934),
+        tier=6,
+    ),
+    # percentage_calculator + calculator
+    Problem(
+        problem="A town has 25000 people. The population grew by 12% last year. Then 500 people moved away. What is the current population?",
+        expected_answer=25000 * 1.12 - 500,
+        tier=6,
+    ),
+    Problem(
+        problem="You invest $5000 and earn 7% return. You then withdraw $200. How much remains?",
+        expected_answer=5000 * 1.07 - 200,
+        tier=6,
+    ),
+    Problem(
+        problem="A class of 40 students took a test. 85% passed. Of those who passed, 6 got an A. How many who passed did not get an A?",
+        expected_answer=40 * 0.85 - 6,
+        tier=6,
+    ),
+    Problem(
+        problem="A factory produces 2000 units. 3% are defective. Each defective unit costs $25 to fix. What is the total repair cost?",
+        expected_answer=2000 * 0.03 * 25,
+        tier=6,
+    ),
+    Problem(
+        problem="A house was bought for $250000 and appreciated by 8%. What is it worth now in thousands of dollars?",
+        expected_answer=250000 * 1.08 / 1000,
+        tier=6,
+    ),
+    # unit_converter + percentage_calculator
+    Problem(
+        problem="A European car gets 15 km per liter. Fuel costs $1.20 per liter. You drive 100 miles. How much do you spend on fuel?",
+        expected_answer=(100 * 1.60934 / 15) * 1.20,
+        tier=6,
+    ),
+    Problem(
+        problem="You weigh 180 lbs and want to lose 10% of your body weight. How many kilograms do you need to lose?",
+        expected_answer=180 * 0.10 * 0.453592,
+        tier=6,
+    ),
+    Problem(
+        problem="A recipe for 6 people uses 500 grams of sugar. You're cooking for 9 people. How many cups of sugar do you need?",
+        expected_answer=(500 * (9 / 6)) / 200.0,
+        tier=6,
+    ),
+    # calculator + date_calculator
+    Problem(
+        problem="You start a project on 2025-03-01 and it takes 45 days. Then you have a 10-day review. How many total days from start to review end?",
+        expected_answer=55,
+        tier=6,
+    ),
+    Problem(
+        problem="An event is 120 days away. You need 90 days to prepare. How many days do you have before you must start preparing?",
+        expected_answer=120 - 90,
+        tier=6,
+    ),
+    # Three-tool combinations
+    Problem(
+        problem="You buy 3 items at $40 each with a 15% discount. Convert the total to euros at 0.92 euros per dollar. How many euros do you pay?",
+        expected_answer=3 * 40 * 0.85 * 0.92,
+        tier=6,
+    ),
+    Problem(
+        problem="A 50 kg bag of rice costs $80. You need 110 lbs of rice. How much will it cost?",
+        expected_answer=(110 * 0.453592 / 50) * 80,
+        tier=6,
+    ),
+    Problem(
+        problem="A car travels 300 miles on 10 gallons of gas. Gas costs $3.50 per gallon. How many km can you drive per dollar spent?",
+        expected_answer=(300 * 1.60934) / (10 * 3.50),
+        tier=6,
+    ),
+    Problem(
+        problem="Your salary is $4500. You pay 22% in taxes and then convert the remainder to British pounds at 0.79 per dollar. How many pounds do you take home?",
+        expected_answer=4500 * (1 - 0.22) * 0.79,
+        tier=6,
+    ),
+    Problem(
+        problem="A pool holds 10000 gallons. You fill it at 5 gallons per minute. After 80% is full, you switch to 3 gallons per minute. How many total minutes to fill it?",
+        expected_answer=(10000 * 0.80 / 5) + (10000 * 0.20 / 3),
+        tier=6,
+    ),
+    Problem(
+        problem="A 5 km race charges $30 entry. If 200 runners sign up and 15% drop out, how much revenue is collected from those who actually run?",
+        expected_answer=200 * (1 - 0.15) * 30,
+        tier=6,
+    ),
+    Problem(
+        problem="A farmer has 200 acres. He plants 60% with corn and 25% with wheat. How many acres are unplanted?",
+        expected_answer=200 * (1 - 0.60 - 0.25),
+        tier=6,
+    ),
+    Problem(
+        problem="You mix 2 lbs of coffee at $12/lb with 3 lbs at $8/lb. What is the average price per kilogram of the blend?",
+        expected_answer=(2 * 12 + 3 * 8) / ((2 + 3) * 0.453592),
+        tier=6,
+    ),
+    Problem(
+        problem="A marathon is 26.2 miles. You ran 30 km. What percentage of a marathon have you completed?",
+        expected_answer=(30 / 1.60934) / 26.2 * 100,
+        tier=6,
+    ),
+    Problem(
+        problem="A tank holds 500 liters. It's 40% full. You add 50 gallons of water (1 gallon = 3.785 liters). How many liters are in the tank now?",
+        expected_answer=500 * 0.40 + 50 * 3.785,
+        tier=6,
+    ),
+]
+
+
+# ---------------------------------------------------------------------------
+# Phase 3 — Incomplete Information and Failure (30 problems)
+# 20 solvable problems mixed with 10 unsolvable ones.  The agent must
+# recognise unsolvable problems and say so rather than hallucinate.
+# ---------------------------------------------------------------------------
+
+PHASE3_SOLVABLE: List[Problem] = [
+    Problem(
+        problem="A train travels at 80 mph for 3 hours. How far does it go?",
+        expected_answer=80 * 3,
+        tier=7,
+    ),
+    Problem(
+        problem="You buy 4 notebooks at $3 each and 2 pens at $1.50 each. The store gives you a $2 discount. How much do you pay?",
+        expected_answer=4 * 3 + 2 * 1.50 - 2,
+        tier=7,
+    ),
+    Problem(
+        problem="A garden is 10m by 8m. You plant flowers in a 3m by 3m section. How much area is left unplanted?",
+        expected_answer=10 * 8 - 3 * 3,
+        tier=7,
+    ),
+    Problem(
+        problem="There are 5 red balls, 3 blue balls, and 7 green balls in a bag. You remove all the blue balls. How many balls remain?",
+        expected_answer=5 + 7,
+        tier=7,
+    ),
+    Problem(
+        problem="A movie is 2 hours and 15 minutes long. You've watched 45 minutes. How many minutes are left?",
+        expected_answer=2 * 60 + 15 - 45,
+        tier=7,
+    ),
+    Problem(
+        problem="A baker makes 5 dozen muffins and sells them for $2 each. She gives 10 away for free. How much revenue does she earn?",
+        expected_answer=(5 * 12 - 10) * 2,
+        tier=7,
+    ),
+    Problem(
+        problem="You have $500. You buy a jacket for $120 and shoes for $80. Your friend owes you $50 and pays you back. How much do you have?",
+        expected_answer=500 - 120 - 80 + 50,
+        tier=7,
+    ),
+    Problem(
+        problem="A parking lot has 200 spaces. 60% are occupied in the morning. By noon, 30 more cars arrive. How many spaces are still empty?",
+        expected_answer=200 - (200 * 0.60 + 30),
+        tier=7,
+    ),
+    Problem(
+        problem="A pool is 50 meters long. A swimmer does 12 laps (one lap = one length). How many meters did she swim?",
+        expected_answer=50 * 12,
+        tier=7,
+    ),
+    Problem(
+        problem="A teacher has 120 worksheets. She gives 4 worksheets to each of her 28 students. How many worksheets are left over?",
+        expected_answer=120 - 4 * 28,
+        tier=7,
+    ),
+    # Problems with irrelevant/distractor information
+    Problem(
+        problem="John is 35 years old and weighs 180 lbs. He buys 6 apples at $0.75 each. How much does he spend?",
+        expected_answer=6 * 0.75,
+        tier=7,
+    ),
+    Problem(
+        problem="A blue car and a red car are in a parking lot. The blue car has 4 doors. The red car has 2 doors. There are also 3 motorcycles. How many doors are there on the cars?",
+        expected_answer=4 + 2,
+        tier=7,
+    ),
+    Problem(
+        problem="Sarah has 3 cats, 2 dogs, and a goldfish. Each cat eats 200g of food per day and each dog eats 400g. How much food do the cats and dogs eat per day in grams?",
+        expected_answer=3 * 200 + 2 * 400,
+        tier=7,
+    ),
+    Problem(
+        problem="A rectangular room is 15 feet long, 12 feet wide, and 9 feet tall. Paint costs $25 per gallon and covers 350 square feet. You only need to paint the floor. How many square feet is the floor?",
+        expected_answer=15 * 12,
+        tier=7,
+    ),
+    Problem(
+        problem="There are 52 cards in a deck. You remove the 4 aces and 4 kings. The remaining cards weigh 1.5 grams each. How many cards remain?",
+        expected_answer=52 - 4 - 4,
+        tier=7,
+    ),
+    # Trick questions that are solvable
+    Problem(
+        problem="If you have 3 quarters, 2 dimes, and 5 nickels, how much money do you have in cents?",
+        expected_answer=3 * 25 + 2 * 10 + 5 * 5,
+        tier=7,
+    ),
+    Problem(
+        problem="A snail climbs 3 feet during the day but slips back 1 foot at night. After 5 full day-night cycles, how many feet has it gained?",
+        expected_answer=(3 - 1) * 5,
+        tier=7,
+    ),
+    Problem(
+        problem="You have two ropes. One is 8 meters long and the other is 5 meters long. You cut 2 meters off the longer rope and discard it, then tie the two ropes together. What is the total length?",
+        expected_answer=(8 - 2) + 5,
+        tier=7,
+    ),
+    Problem(
+        problem="A clock strikes every hour. How many times does it strike between 1:00 PM and 5:00 PM inclusive?",
+        expected_answer=1 + 2 + 3 + 4 + 5,
+        tier=7,
+    ),
+    Problem(
+        problem="Three friends split a $90 dinner bill equally, then each leaves a $5 tip. How much does each person pay in total?",
+        expected_answer=90 / 3 + 5,
+        tier=7,
+    ),
+]
+
+PHASE3_UNSOLVABLE: List[Problem] = [
+    Problem(
+        problem="Two trains leave cities 400 miles apart, heading toward each other. Train A goes 60 mph. When do they meet?",
+        expected_answer=float("nan"),  # unsolvable — Train B's speed is missing
+        tier=8,
+    ),
+    Problem(
+        problem="A store sells apples and oranges. Apples cost $2 each. You buy some fruit and pay $14. How many apples did you buy?",
+        expected_answer=float("nan"),  # unsolvable — could be a mix of apples and oranges
+        tier=8,
+    ),
+    Problem(
+        problem="A rectangle has a perimeter of 30 meters. What is its area?",
+        expected_answer=float("nan"),  # unsolvable — need both length and width
+        tier=8,
+    ),
+    Problem(
+        problem="A car drives from City A to City B. The trip takes 3 hours. How fast was the car going?",
+        expected_answer=float("nan"),  # unsolvable — distance is missing
+        tier=8,
+    ),
+    Problem(
+        problem="You mix red and blue paint to make purple. You used 3 cups of red paint. How much purple paint do you have?",
+        expected_answer=float("nan"),  # unsolvable — amount of blue paint is missing
+        tier=8,
+    ),
+    Problem(
+        problem="A factory produces widgets. Each widget sells for $15. What is the factory's monthly profit?",
+        expected_answer=float("nan"),  # unsolvable — production count and costs are missing
+        tier=8,
+    ),
+    Problem(
+        problem="Three siblings share some candy. The oldest gets twice as many as the youngest. How many pieces does each child get?",
+        expected_answer=float("nan"),  # unsolvable — total candy and middle child's share unknown
+        tier=8,
+    ),
+    Problem(
+        problem="A tank is filling with water at some rate. After 2 hours it's half full. When will it be completely full?",
+        expected_answer=float("nan"),  # unsolvable — can't assume constant rate without knowing it
+        tier=8,
+    ),
+    Problem(
+        problem="A plane flies east at 500 mph. Another plane flies west. When will they be 2000 miles apart?",
+        expected_answer=float("nan"),  # unsolvable — second plane's speed is missing
+        tier=8,
+    ),
+    Problem(
+        problem="You earn a certain salary. After a 10% raise, you can afford a new car. How much does the car cost?",
+        expected_answer=float("nan"),  # unsolvable — salary is unknown
+        tier=8,
+    ),
+]
+
+PHASE3_PROBLEMS: List[Problem] = PHASE3_SOLVABLE + PHASE3_UNSOLVABLE
+
+
 # Combine all problems into a single list
-PROBLEMS: List[Problem] = _TIER1 + _TIER2 + _TIER3 + _TIER4 + _TIER5
+PROBLEMS: List[Problem] = PHASE1_PROBLEMS + PHASE2_PROBLEMS + PHASE3_PROBLEMS
 
 # Build a lookup dictionary keyed by the problem text for convenience.  Note
-# that the key comparison is case‑sensitive; ensure that the exact problem
+# that the key comparison is case-sensitive; ensure that the exact problem
 # string is used when performing lookups.
 PROBLEM_BY_TEXT: Dict[str, Problem] = {p.problem: p for p in PROBLEMS}
